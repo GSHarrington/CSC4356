@@ -1,0 +1,79 @@
+<!--Gaelan Harrington
+  @gharr28@lsu.edu
+  CSC 4356 | ICG
+  Project 3 : Bunny-->
+<html lang="en">
+	<head>
+		<title> Project #3 </title>
+    <!--JavaScript Import-->
+     <script type="text/javascript" src="bunny.js"></script>
+    <script type="text/javascript" src="prog3.js"></script>
+    <!--WebGL utilities-->  
+		<script type="text/javascript" src="webgl-utils.js"></script>
+    <script type="text/javascript" src="webgl-debug.js"></script>
+    <script type="text/javascript" src="cuon-utils.js"></script>
+    <script type="text/javascript" src="cuon-matrix.js"></script>
+    <style>
+  canvas {
+    background-color:#333333;
+    padding: 0;
+    margin: auto;
+    display: block;
+    width: 250px;
+    height: 250px;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  } 
+  html{
+    background-color: #333333;
+  }
+  h1{
+    color:#666666;
+    font-size: 10px;
+  }
+ 
+  </style>
+  </head>
+<!--Initialization Image Loader-->
+  <body onload="init()">
+     <h1>Gaelan Harrington | Project 3</h1>
+    <canvas id="webgl" width="500px" height="500px">
+     Error: This content requires <a href="http://get.webgl.org/">WebGL</a>.</canvas><!--Sets Canvas for rendering with warning if not able to do so.-->
+     <!--Copy vertex position towards output in HTML rather than js-->
+  	<script id="vertexShader" type="x-shader/x-vertex">
+     precision mediump float;
+  		uniform mat4 projectionMatrix;
+  		uniform mat4 modelMatrix;
+
+  		uniform vec3 lightDirection;
+  		uniform vec3 lightColor;
+  		uniform vec3 modelColor;
+      
+  		attribute vec4 vertexPosition;
+  		attribute vec3 vertexNormal;
+  		varying mediump vec3 fragmentColor;
+
+  		void main() {
+  			vec4 p = modelMatrix * vertexPosition;
+  			vec3 n = normalize(mat3(modelMatrix) * vertexNormal);
+  			vec3 l = normalize(mat3(modelMatrix) * lightDirection);
+  			vec3 v = normalize(vec3(-p));
+  			vec3 h = normalize(v + l);
+  			float d = max(dot(n,l), 0.0);
+  			float s = pow(max(dot(n,h), 0.0), 100.0);
+  			fragmentColor = lightColor * (modelColor * d + vec3(s));
+  			gl_Position = projectionMatrix * modelMatrix * vertexPosition;
+  		}
+  	</script>
+  	<script id="fragmentShader" type="x-shader/x-fragment">
+  		precision mediump float;
+      varying mediump vec3 fragmentColor;
+  		void main() {
+  			gl_FragColor = vec4(fragmentColor, 1.0);
+  		}
+  	</script>
+ 	</body>
+</html>

@@ -1,0 +1,30 @@
+<!--Gaelan Harrington
+	@gharr28@lsu.edu
+	CSC 4356 | ICG
+	Project 1 : Triforce-->
+<html>
+<head>
+	<!--JavaScript Import-->
+		<script type="text/javascript" src="prog1.js"></script>
+	<!--WebGL utilities-->	
+		<script type="text/javascript" src="webgl-utils.js"></script>
+		<script type="text/javascript" src="webgl-debug.js"></script>
+		<script type="text/javascript" src="cuon-matrix.js"></script>
+		<script type="text/javascript" src="cuon-utils.js"></script>
+</head>
+<!--Initialization Image Loader-->
+	<body onload="init()"> 
+ 		<canvas id="webgl" width="256px" height="256px">
+ 		 Error: This content requires <a href="http://get.webgl.org/">WebGL</a>.</canvas><!--Sets Canvas for rendering with warning if not able to do so.-->
+ 		 <!--Copy vertex position towards output in HTML rather than js-->
+ 		<script id="vertexShader" type="xshader/x-vertex">
+			precision mediump float;
+			attribute vec4 vertexPosition;
+			void main() {gl_Position = vertexPosition;}
+		</script>
+		<!--GPU pixel processing magic-->
+		<script id="fragmentShader" type="x-shader/x-fragment">
+			void main() {gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);}
+		</script>
+	</body>
+</html>
