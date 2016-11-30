@@ -1,0 +1,305 @@
+<!--Gaelan Harrington
+    @gharr28@lsu.edu
+    CSC 4356 | ICG
+    Project 7 : Final*/-->
+ <!--For this project I decied to create a motorcycle model with a person on the bike. After watching several hours with maya's 3D software I managed to create a model with color in the form of materials. After some adjustments I managed to export my file as an .Obj and .mtl (I had wheel animations but after having trouble with simply color so I decided to remove them :/ From there I had to figure out how to use the .mtl file for the texture wrapping on the model. This turned out to be a big problem since UV mapping my image proved to be harder than I had thought. Without the uv mapping the model wasn't able to connect the points correctly to the model. I looked into adapting the .mtl within the image loader function but I wasn't certain that it would do so without a third-party library. Instead I used a simple texture that wrapped my object in a camo theme. Not the best solution but a solution nevertheless. Afterwards I wanted to have an idle sound that looped for the bike. It was an easy implementation with recording my bike. From there I decided now that I have a texture on my bike (finally!) I wanted apply some simple shaders to add an array of effects to the bike. However I believe that the texture coordinates made the shaders not function correctly from previous class examples. If I did this again I would have spent more time on the shader effects and not so much on the texture wrapping.  -->
+<html>
+	<head>
+		<script type="text/javascript" src="webgl-utils.js"></script>
+		<script type="text/javascript" src="webgl-debug.js"></script>
+		<script type="text/javascript" src="cuon-matrix.js"></script>
+		<script type="text/javascript" src="cuon-utils.js"></script>
+		<script type="text/javascript" src="prog7.js"></script>
+		<script type="text/javascript" src="chest.js"></script>
+		<script type="text/javascript" src="square.js"></script>
+
+<style>
+<style>
+	<style> 
+	#inputblock{
+		position: absolute;background-color: transparent;z-index: 1;
+	}
+        canvas
+        {
+            background-color: transparent;padding: 0;
+            margin: auto; display: block;
+            width: 500px;height: 500px;
+            position: absolute;top: 0;
+            bottom: 0;left: 0;right: 0; z-index: 0;
+        }
+        label{ color:#555555;}  
+        html,body{background-color: #333333;}
+        h1{color:#666666;font-size: 10px;}
+        h2{position: absolute;bottom:0;right:0;color: red;font-size: 15px;padding: 15px; z-index: 1;}
+        h3{color:#888888; font-size: 18px;}
+        td{text-align: center}
+        
+        p1{color:#888888;font-size: 16px;}
+        p{display: inline; color:#33CC00;}
+        
+        </style>
+</style>
+	</head>
+	<body onload ="init()">
+
+		<script id="chestvertexShader" type="xshader/x-vertex">
+		precision mediump float;
+		uniform mat4 projectionMatrix;
+		uniform mat4 viewMatrix;
+		uniform mat4 modelMatrix;
+		uniform vec4 lightPosition ;
+		attribute vec4 vertexPosition;
+		attribute vec3 vertexNormal;
+		attribute vec2 vertexTexCoord;
+		varying vec2 fragmentTexCoord;
+		varying vec3 fragmentNormal;
+		varying vec3 fragmentLight;
+		varying vec3 fragmentView;
+		varying vec3 modelColor;
+		void main() {
+			fragmentTexCoord = vertexTexCoord;
+			mat4 modelViewMatrix = viewMatrix * modelMatrix;
+			vec4 p = modelViewMatrix * vertexPosition;
+			vec4 q = viewMatrix * lightPosition;
+			fragmentNormal = normalize(mat3(modelViewMatrix)* vertexNormal);
+			fragmentLight = normalize(vec3(q-p));
+			fragmentView = normalize(vec3(-p));
+			gl_Position = projectionMatrix * modelViewMatrix * vertexPosition;
+		}
+		</script>
+		<script id="chestfragmentShader" type="x-shader/x-fragment">
+		precision mediump float;
+		varying vec3 fragmentNormal;
+		varying vec3 fragmentLight;
+		varying vec3 fragmentView;
+		varying vec2 fragmentTexCoord;
+		uniform sampler2D diffuseTexture;
+    	uniform sampler2D specularTexture;
+    	vec3 diffuseColor ;
+		vec3 specularColor;
+		const vec3 lightColor = vec3(1.0, 1.0, 1.0);
+		vec3 n,l,v,h;
+		float d,s;
+		void main() {
+			diffuseColor = vec3(texture2D(diffuseTexture,fragmentTexCoord));
+			specularColor = vec3(texture2D(specularTexture,fragmentTexCoord));
+			n = normalize(fragmentNormal);
+			l = normalize(fragmentLight);
+			v = normalize(fragmentView);
+			h = normalize(l + v);
+			d = max(dot(l , n), 1.0);
+			s = pow(max(dot(h , n), 0.3), 10.0);
+			vec3 fragmentColor =    diffuseColor * lightColor * d + specularColor * lightColor * s ;
+			gl_FragColor = vec4(fragmentColor,1.0);
+		}
+		</script>
+		<script id="postProcessingVertexShader" type="x-shader/x-vertex">
+			precision mediump float;
+			attribute vec4 vertexPosition;
+			attribute vec2 vertexTexCoord;
+			varying vec2 fragTexCoord;
+			void main() {
+				fragTexCoord = vertexTexCoord;
+				gl_Position = vertexPosition;
+			}
+		</script>
+		<script id="nothingFragmentShader" type="x-shader/x-fragment">
+			precision mediump float;
+			varying vec2 fragTexCoord;
+			uniform sampler2D colorTexture;
+			void main() {
+				gl_FragColor = texture2D(colorTexture, fragTexCoord).rgba;
+			}
+		</script>
+		<script id="blurFragmentShader" type="x-shader/x-fragment">
+			precision mediump float;
+			varying vec2 fragTexCoord;
+			uniform sampler2D colorTexture;
+			vec3 c1,c2,c3,c4,c5,c6,c7,c8,c9,c;
+			float d;
+			void main() {
+				d = 1.0 / 400.0;
+				c1 = texture2D(colorTexture, fragTexCoord + vec2(-d, -d)).rgb;
+				c2 = texture2D(colorTexture, fragTexCoord + vec2( 0, -d)).rgb;
+				c3 = texture2D(colorTexture, fragTexCoord + vec2(+d, -d)).rgb;
+				c4 = texture2D(colorTexture, fragTexCoord + vec2(-d,  0)).rgb;
+				c5 = texture2D(colorTexture, fragTexCoord + vec2( 0,  0)).rgb;
+				c6 = texture2D(colorTexture, fragTexCoord + vec2(+d,  0)).rgb;
+				c7 = texture2D(colorTexture, fragTexCoord + vec2(-d, +d)).rgb;
+				c8 = texture2D(colorTexture, fragTexCoord + vec2( 0, +d)).rgb;
+				c9 = texture2D(colorTexture, fragTexCoord + vec2(+d, +d)).rgb;
+				c = 1.0 * c1 + 2.0 * c2 + 1.0 * c3 + 2.0 * c4 + 4.0 * c5 + 2.0 * c6 + 1.0 * c7 + 2.0 * c8 + 1.0 * c9;
+
+				gl_FragColor = vec4(c / 16.0, 1.0);
+			}
+		</script>
+		<script id="thresholdFragmentShader" type="x-shader/x-fragment">
+			precision mediump float;
+			varying vec2 fragTexCoord;
+			uniform sampler2D colorTexture;
+			void main() {
+				vec3 c = texture2D(colorTexture, fragTexCoord).rgb;
+				float d = dot(c, vec3(0.213, 0.715, 0.072));
+				gl_FragColor = step(0.5, d) * vec4(0.0, 0.0, 0.0, 1.0) + (1.0 - step(0.5, d)) * vec4(1.0, 1.0, 1.0, 1.0);
+			}
+		</script>
+		<script id="edgeDetectionFragmentShader" type="x-shader/x-fragment">
+			precision mediump float;
+			varying vec2 fragTexCoord;
+			uniform sampler2D colorTexture;
+			vec3 c1,c2,c3,c4,c5,c6,c7,c8,c9,x,y;
+			float d; 
+			void main() {
+				d = 1.0 / 400.0;
+				c1 = texture2D(colorTexture, fragTexCoord + vec2(-d, -d)).rgb;
+				c2 = texture2D(colorTexture, fragTexCoord + vec2( 0, -d)).rgb;
+				c3 = texture2D(colorTexture, fragTexCoord + vec2(+d, -d)).rgb;
+				c4 = texture2D(colorTexture, fragTexCoord + vec2(-d,  0)).rgb;
+				c5 = texture2D(colorTexture, fragTexCoord + vec2( 0,  0)).rgb;
+				c6 = texture2D(colorTexture, fragTexCoord + vec2(+d,  0)).rgb;
+				c7 = texture2D(colorTexture, fragTexCoord + vec2(-d, +d)).rgb;
+				c8 = texture2D(colorTexture, fragTexCoord + vec2( 0, +d)).rgb;
+				c9 = texture2D(colorTexture, fragTexCoord + vec2(+d, +d)).rgb;
+				x = vec3((c3 + c6 + c6 + c9) - (c1 + c4 + c4 + c7));
+				y = vec3((c1 + c2 + c2 + c2) - (c7 + c8 + c8 + c9));
+				gl_FragColor = vec4(sqrt(x * x + y * y), 1.0);
+			}
+		</script>
+		 <script id="mirrorVertexShader" type="x-shader/x-vertex">
+       varyingvec2 vUv;
+       void main(){
+       	vUv = uv;
+       	gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);
+       }
+         }
+      </script>
+		<script id="mirrorFragmentShader" type="x-shader/x-fragment">
+        	uniform sampler2D tDiffuse;,
+		uniform int side;
+		
+		varying vec2 vUv;
+
+		void main() {
+
+			vec2 p = vUv;
+			if (side == 0){
+				if (p.x > 0.5) p.x = 1.0 - p.x;
+			}else if (side == 1){
+				if (p.x < 0.5) p.x = 1.0 - p.x;
+			}else if (side == 2){
+				if (p.y < 0.5) p.y = 1.0 - p.y;
+			}else if (side == 3){
+				if (p.y > 0.5) p.y = 1.0 - p.y;
+			} 
+			vec4 color = texture2D(tDiffuse, p);
+			gl_FragColor = color;
+
+
+         }
+      </script>
+      
+      <script id="lightVertexShader" type="x-shader/x-vertex">
+         precision mediump float;
+         
+         uniform mat4 projectionMatrix;
+         uniform mat4 viewMatrix;
+         uniform mat4 modelMatrix;
+         vec4 lightPosition = vec4(1.0,10.0,1.0,1.0);
+         attribute vec4 vertexPosition;
+         attribute vec3 vertexNormal;
+         varying vec3 fragmentNormal;
+         varying vec3 fragmentLight;
+         varying vec3 fragmentView;
+         mat4 modelViewMatrix;
+         vec4 p;
+         vec4 q;
+         void main() {
+            modelViewMatrix = viewMatrix*modelMatrix;
+            p = modelViewMatrix*vertexPosition;
+            q = viewMatrix*lightPosition;
+           
+         fragmentNormal = normalize(mat3(modelViewMatrix)*vertexNormal);
+            fragmentLight = normalize(vec3(q-p));
+            fragmentView = normalize(vec3(-p));
+         
+            gl_Position = projectionMatrix*modelViewMatrix*vertexPosition;
+         }
+      </script>
+      <script id="lightFragmentShader" type="x-shader/x-fragment">
+         precision mediump float;
+         varying vec3 fragmentNormal;
+         varying vec3 fragmentLight;
+         varying vec3 fragmentView;
+         vec3 modelColor = vec3(.5,.5,.5);
+         vec3 lightColor = vec3(.6,.4,.2);
+         vec3 n;
+         vec3 l;
+         vec3 v;
+         vec3 h;
+         float d;
+         float s;
+         
+         void main() {
+            n = normalize(fragmentNormal);
+            l = normalize(fragmentLight);
+            v = normalize(fragmentView);
+            h = normalize(l+v);
+            d = max(dot(l,n),0.0);
+            s = pow(max(dot(h,n),0.0), 60.0);
+         
+            vec3 fragmentColor = modelColor*lightColor*d+lightColor*s;
+            gl_FragColor = vec4(fragmentColor,1.0);
+         }
+      </script>
+		<canvas id="webgl" width="500px" height="500px">
+		This content requires <a href="http://get.webgl.org/">WebGL</a>.
+		</canvas>
+		<div id ="inputblock">
+		
+		<form>
+			<h3>Shader Controls</h3>	
+			<p1> Current |  </p1><p class="shaderCol" id="currentShader"> No Effect</p><br>
+		<br>
+			<input type="radio" id="None" name="shader" onchange="Radio()" checked>
+			<label class="largeLabel">No Effect </label>
+		<br>
+			<input type="radio" id="Blur" name="shader" onchange="Radio()">
+			<label class="largeLabel">Blur Effect</label>
+		<br>
+			<input type="radio" id="Thresh" name="shader" onchange="Radio()">
+			<label class="largeLabel">Threshold Effect </label>
+		<br>
+			<input type="radio" id="Edge" name="shader" onchange="Radio()">
+			<label class="largeLabel">Edge Detection Effect</label>
+		<br>
+			<input type="radio" id="Mirror" name="shader" onchange="Radio()">
+			<label class="largeLabel">Mirror Effect</label>
+		<br>
+			<input type="radio" id="Choco" name="shader" onchange="Radio()">
+			<label class="largeLabel">Choco Effect</label>
+		<br>
+		<br>
+			<h3>Light Controls</h3>	
+		  <label> Axis X </label>
+		  <input id = "xInput" type = "range" min="-5.0" max="5.0" step="0.1" value="0.0" oninput="slider()">
+		  <span id = "xOutput">0.0</span>
+		<br>
+		<br>
+		  <label> Axis Y </label>
+		  <input id = "yInput" type = "range" min="-5.0" max="5.0" step="0.1" value="1.0" oninput="slider()">
+		  <span id = "yOutput">1.0</span>
+	  	<br>
+	  	<br>
+		  <label> Axis Z </label>
+		  <input id = "zInput" type = "range" min="-5.0" max="5.0" step="0.1" value="1.0" oninput="slider()">
+		  <span id = "zOutput">1.0</span>
+		  <br>
+		  <br>
+		  <h3>Sound Controls</h3>	
+		  <audio loop="loop" autoplay="autoplay" controls="controls">  
+   			<source src="engine.mp3" />  
+		  </audio> 
+		</form>
+		</div>
+	</body>
+</html>
